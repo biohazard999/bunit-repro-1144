@@ -1,0 +1,56 @@
+﻿@using Bunit;
+@using Markdig;
+
+@using Microsoft.AspNetCore.Components;
+@using Microsoft.AspNetCore.Components.Rendering;
+@using System.Text.RegularExpressions;
+@using Vertiq.Utils;
+
+@preservewhitespace true
+
+@inject IServiceProvider ServiceProvider
+
+<VDiv Class="content">
+    @_markupString
+</VDiv>
+
+@code
+{
+    private readonly MarkdownPipeline Pipeline = new MarkdownPipelineBuilder()
+        .UseAdvancedExtensions()
+        .UseDiagrams()
+        .UseTaskLists()
+        .Build();
+
+    [Parameter]
+    public string Content { get; set; } = "";
+
+    [Parameter]
+    public RenderFragment ChildContent { get; set; } = default!;
+
+    private MarkupString _markupString = new MarkupString();
+
+    /// <inheritdoc/>
+    protected override void OnParametersSet()
+    {
+        base.OnParametersSet();
+        if (!string.IsNullOrEmpty(Content))
+        {
+            var html = Markdown.ToHtml(Content, Pipeline);
+            _markupString = new MarkupString(html);
+        }
+        else if (ChildContent is not null)
+        {
+            var context = new TestContext();
+
+            context.Services.AddFallbackServiceProvider(ServiceProvider);
+
+            var rendered = context.Render(ChildContent);
+            var markup = MarkdownStringUtils.TrimLeftSpaces(rendered.Markup);
+
+            var html = Markdown.ToHtml(markup, Pipeline);
+            _markupString = new MarkupString(html);
+        }
+    }
+
+}
